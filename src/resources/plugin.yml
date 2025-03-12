@@ -1,0 +1,8 @@
+name: BeastFreinds
+main: beastfriends.BeastFreinds
+version: 0.1
+author: Yahgiggle
+team:
+description: "Pets & breeding Plugin"
+license:
+website:

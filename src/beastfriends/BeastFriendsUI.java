@@ -1,5 +1,7 @@
 package beastfriends;
 
+
+import net.risingworld.api.Plugin;
 import net.risingworld.api.objects.Player;
 import net.risingworld.api.objects.Npc;
 import net.risingworld.api.ui.UIElement;
@@ -10,12 +12,13 @@ import net.risingworld.api.events.Listener;
 import net.risingworld.api.events.EventMethod;
 import net.risingworld.api.events.player.ui.PlayerUIElementClickEvent;
 
-public class BeastFriendsUI implements Listener {
+public class BeastFriendsUI  extends Plugin implements Listener{
 
     static {
         System.out.println("[BeastFriends] BeastFriendsUI class loaded by JVM.");
     }
-
+    
+    
     private final BeastFriends plugin;
     private final Player player;
     private UIElement tameMenu;
@@ -121,5 +124,15 @@ public class BeastFriendsUI implements Listener {
             myPetsMenu.setVisible(false);
             player.setMouseCursorVisible(false);
         }
+    }
+
+    @Override
+    public void onEnable() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public void onDisable() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 }

@@ -1,7 +1,5 @@
 package beastfriends;
 
-
-import net.risingworld.api.Plugin;
 import net.risingworld.api.objects.Player;
 import net.risingworld.api.objects.Npc;
 import net.risingworld.api.ui.UIElement;
@@ -12,25 +10,38 @@ import net.risingworld.api.events.Listener;
 import net.risingworld.api.events.EventMethod;
 import net.risingworld.api.events.player.ui.PlayerUIElementClickEvent;
 
-public class BeastFriendsUI  extends Plugin implements Listener{
+public class BeastFriendsUI implements Listener {
 
     static {
         System.out.println("[BeastFriends] BeastFriendsUI class loaded by JVM.");
     }
-    
-    
+
     private final BeastFriends plugin;
     private final Player player;
+    private final TamingManager taming;
+    private final BreedingManager breeding;
+    private final PetManager pets;
     private UIElement tameMenu;
     private UIElement myPetsMenu;
+    private UIElement tamingInfo;
+    private UIElement petManagementMenu;
     private UILabel tameStatusLabel;
+    private UILabel tamingInfoLabel;
     private UILabel feedButton;
     private UILabel closeButton;
+    private UILabel followButton;
+    private UILabel standStillButton;
+    private UILabel roamButton;
+    private UILabel breedButton;
     private Npc currentTamingNpc;
+    private Npc currentManagedNpc;
 
     public BeastFriendsUI(BeastFriends plugin, Player player) {
         this.plugin = plugin;
         this.player = player;
+        this.taming = new TamingManager(plugin, this, new DatabaseManager(plugin.getSQLiteConnection(plugin.getPath() + "/pets.db")));
+        this.breeding = new BreedingManager(plugin, this, new DatabaseManager(plugin.getSQLiteConnection(plugin.getPath() + "/pets.db")));
+        this.pets = new PetManager(plugin, new DatabaseManager(plugin.getSQLiteConnection(plugin.getPath() + "/pets.db")));
         plugin.registerEventListener(this);
     }
 
@@ -47,11 +58,51 @@ public class BeastFriendsUI  extends Plugin implements Listener{
         createLabel(tameMenu, 10, 10, "Tame " + npc.getDefinition().name, 280, 40);
         tameStatusLabel = createLabel(tameMenu, 10, 60, "Click 'Feed' to tame!", 280, 40);
         feedButton = createButton(tameMenu, 100, 120, "Feed", 100, 40);
+        closeButton = createButton(tameMenu, 100, 160, "Close", 100, 40);
         player.setAttribute("tameFeedButton", feedButton);
         this.currentTamingNpc = npc;
 
         tameMenu.setVisible(true);
         player.setMouseCursorVisible(true);
+    }
+
+    public void closeTameMenu() {
+        if (tameMenu != null) {
+            tameMenu.setVisible(false);
+            player.setMouseCursorVisible(false);
+        }
+    }
+
+    public void showTamingInfo(String npcName, int feedCount) {
+        if (tamingInfo != null) tamingInfo.setVisible(false);
+
+        tamingInfo = new UIElement();
+        player.addUIElement(tamingInfo);
+        tamingInfo.setSize(300, 100, false);
+        tamingInfo.setPosition(50, 10, true);
+        tamingInfo.setBorder(2);
+        tamingInfo.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.9f);
+
+        tamingInfoLabel = createLabel(tamingInfo, 10, 10, npcName.substring(0, 1).toUpperCase() + npcName.substring(1) + 
+                " Called Feed " + feedCount + "/5 times\nFeed again within 60s!", 280, 80);
+        tamingInfo.setVisible(true);
+    }
+
+    public void updateTamingInfo(String npcName, int feedCount, int secondsLeft) {
+        updateTamingInfo(npcName, feedCount, secondsLeft, "Feed again within " + secondsLeft + "s!");
+    }
+
+    public void updateTamingInfo(String npcName, int feedCount, int secondsLeft, String message) {
+        if (tamingInfoLabel != null) {
+            tamingInfoLabel.setText(npcName.substring(0, 1).toUpperCase() + npcName.substring(1) + 
+                    " Called Feed " + feedCount + "/5 times\n" + message);
+        }
+    }
+
+    public void closeTamingInfo() {
+        if (tamingInfo != null) {
+            tamingInfo.setVisible(false);
+        }
     }
 
     public void showMyPetsMenu(Player player) {
@@ -72,9 +123,33 @@ public class BeastFriendsUI  extends Plugin implements Listener{
         player.setMouseCursorVisible(true);
     }
 
+    public void showPetManagementMenu(Npc npc) {
+        if (petManagementMenu != null) petManagementMenu.setVisible(false);
+
+        petManagementMenu = new UIElement();
+        player.addUIElement(petManagementMenu);
+        petManagementMenu.setSize(300, 250, false);
+        petManagementMenu.setPosition(50, 50, true);
+        petManagementMenu.setBorder(2);
+        petManagementMenu.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.9f);
+
+        createLabel(petManagementMenu, 10, 10, "Manage " + npc.getName(), 280, 40);
+        followButton = createButton(petManagementMenu, 10, 60, "Follow Me", 130, 40);
+        standStillButton = createButton(petManagementMenu, 160, 60, "Stand Still", 130, 40);
+        roamButton = createButton(petManagementMenu, 10, 110, "Roam", 130, 40);
+        breedButton = createButton(petManagementMenu, 160, 110, "Breed", 130, 40);
+        closeButton = createButton(petManagementMenu, 100, 160, "Close", 100, 40);
+
+        this.currentManagedNpc = npc;
+        petManagementMenu.setVisible(true);
+        player.setMouseCursorVisible(true);
+    }
+
     public void closeAllMenus() {
         if (tameMenu != null) tameMenu.setVisible(false);
         if (myPetsMenu != null) myPetsMenu.setVisible(false);
+        if (tamingInfo != null) tamingInfo.setVisible(false);
+        if (petManagementMenu != null) petManagementMenu.setVisible(false);
         player.setMouseCursorVisible(false);
     }
 
@@ -119,20 +194,28 @@ public class BeastFriendsUI  extends Plugin implements Listener{
         UILabel clickedLabel = (UILabel) event.getUIElement();
 
         if (clickedLabel == feedButton && currentTamingNpc != null) {
-            plugin.attemptTame(player, currentTamingNpc, this);
+            taming.attemptTame(player, currentTamingNpc);
         } else if (clickedLabel == closeButton) {
-            myPetsMenu.setVisible(false);
+            if (tameMenu != null) tameMenu.setVisible(false);
+            if (myPetsMenu != null) myPetsMenu.setVisible(false);
+            if (petManagementMenu != null) petManagementMenu.setVisible(false);
+            player.setMouseCursorVisible(false);
+        } else if (clickedLabel == followButton && currentManagedNpc != null) {
+            plugin.makePetFollow(player, currentManagedNpc);
+            petManagementMenu.setVisible(false);
+            player.setMouseCursorVisible(false);
+        } else if (clickedLabel == standStillButton && currentManagedNpc != null) {
+            plugin.makePetStandStill(player, currentManagedNpc);
+            petManagementMenu.setVisible(false);
+            player.setMouseCursorVisible(false);
+        } else if (clickedLabel == roamButton && currentManagedNpc != null) {
+            plugin.makePetRoam(player, currentManagedNpc);
+            petManagementMenu.setVisible(false);
+            player.setMouseCursorVisible(false);
+        } else if (clickedLabel == breedButton && currentManagedNpc != null) {
+            breeding.attemptBreed(player, currentManagedNpc);
+            petManagementMenu.setVisible(false);
             player.setMouseCursorVisible(false);
         }
-    }
-
-    @Override
-    public void onEnable() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-
-    @Override
-    public void onDisable() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 }

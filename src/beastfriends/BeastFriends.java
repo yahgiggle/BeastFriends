@@ -11,14 +11,15 @@ import net.risingworld.api.definitions.Npcs;
 import net.risingworld.api.database.Database;
 import net.risingworld.api.utils.MouseButton;
 import java.util.logging.Logger;
+import net.risingworld.api.events.player.PlayerConnectEvent;
+import java.util.HashMap;
 
 public class BeastFriends extends Plugin implements Listener {
 
     private static final Logger LOGGER = Logger.getLogger(BeastFriends.class.getName());
     private Database petDatabase;
     private DatabaseManager dbManager;
-    
-    
+    private HashMap<Player, BeastFriendsUI> playerUIs = new HashMap<>(); // Store UI instances per player
 
     @Override
     public void onEnable() {
@@ -47,6 +48,16 @@ public class BeastFriends extends Plugin implements Listener {
         if (dbManager != null) {
             dbManager.closeDatabase();
         }
+        for (BeastFriendsUI ui : playerUIs.values()) {
+            ui.closeAllMenus();
+        }
+        playerUIs.clear();
+    }
+
+    @EventMethod
+    public void onPlayerConnect(PlayerConnectEvent event) {
+        Player player = event.getPlayer();
+        // No need to set thisfeedcount here; handled in TamingManager
     }
 
     @EventMethod
@@ -62,14 +73,17 @@ public class BeastFriends extends Plugin implements Listener {
         if (event.isPressed() && event.getButton() == MouseButton.Right) {
             player.getNpcInLineOfSight(100, (npc) -> {
                 if (npc != null && npc.getDefinition().type == Npcs.Type.Animal) {
-                    BeastFriendsUI ui = new BeastFriendsUI(this, player);
-                    TamingManager taming = new TamingManager(this, ui, dbManager);
-                    BreedingManager breeding = new BreedingManager(this, ui, dbManager);
-                    PetManager pets = new PetManager(this, dbManager);
+                    BeastFriendsUI ui = playerUIs.get(player);
+                    if (ui == null) {
+                        ui = new BeastFriendsUI(this, player);
+                        playerUIs.put(player, ui);
+                    }
+                    TamingManager taming = ui.getTaming();
                     if (dbManager.isOwner(player, npc)) {
                         ui.showPetManagementMenu(npc);
                     } else {
-                        ui.showTameMenu(npc);
+                        ui.showTameUI(npc); // Will check NPC match internally
+                        taming.attemptTame(player, npc); // Start or continue taming if same NPC
                     }
                 }
             });

@@ -3,7 +3,7 @@ package beastfriends;
 import net.risingworld.api.Timer;
 import net.risingworld.api.objects.Player;
 import net.risingworld.api.objects.Npc;
-import net.risingworld.api.definitions.Npcs; // Added this import
+import net.risingworld.api.definitions.Npcs;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.logging.Logger;
@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 public class PetManager {
 
     private static final Logger LOGGER = Logger.getLogger(PetManager.class.getName());
-
     private final BeastFriends plugin;
     private final DatabaseManager dbManager;
     private final HashMap<Player, Timer> playerPetTimers = new HashMap<>();
@@ -29,7 +28,7 @@ public class PetManager {
         npc.setLocked(false);
         Timer oldTimer = playerPetTimers.get(player);
         if (oldTimer != null) oldTimer.kill();
-        
+
         final Timer followTimer = new Timer(1.0f, 0.0f, -1, () -> {
             npc.moveTo(player.getPosition().x + 1, player.getPosition().y, player.getPosition().z);
         });
@@ -59,7 +58,7 @@ public class PetManager {
         Timer oldTimer = playerPetTimers.get(player);
         if (oldTimer != null) oldTimer.kill();
         npc.setLocked(false);
-        
+
         final Timer roamTimer = new Timer(2.0f, 0.0f, -1, () -> {
             Random rand = new Random();
             float offsetX = rand.nextFloat() * 10 - 5;
@@ -69,13 +68,5 @@ public class PetManager {
         roamTimer.start();
         playerPetTimers.put(player, roamTimer);
         LOGGER.info("[BeastFriends] Pet " + npc.getName() + " roaming for " + player.getName());
-    }
-
-    public void stopPetTimers(Player player) {
-        Timer timer = playerPetTimers.get(player);
-        if (timer != null) {
-            timer.kill();
-            playerPetTimers.remove(player);
-        }
     }
 }

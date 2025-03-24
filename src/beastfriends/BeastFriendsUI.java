@@ -1,301 +1,300 @@
 package beastfriends;
 
+import java.sql.SQLException;
+import net.risingworld.api.Plugin;
+import net.risingworld.api.assets.TextureAsset;
+import net.risingworld.api.database.Database;
+import net.risingworld.api.events.player.PlayerConnectEvent;
 import net.risingworld.api.objects.Player;
-import net.risingworld.api.objects.Npc;
 import net.risingworld.api.ui.UIElement;
 import net.risingworld.api.ui.UILabel;
+import net.risingworld.api.ui.UITarget;
+import net.risingworld.api.ui.UITextField;
 import net.risingworld.api.ui.style.Font;
+import net.risingworld.api.ui.style.ScaleMode;
 import net.risingworld.api.ui.style.TextAnchor;
-import net.risingworld.api.events.Listener;
-import net.risingworld.api.events.EventMethod;
-import net.risingworld.api.events.player.ui.PlayerUIElementClickEvent;
 
-public class BeastFriendsUI implements Listener {
 
-    static {
-        System.out.println("[BeastFriends] BeastFriendsUI class loaded by JVM.");
-    }
-
-    private final BeastFriends plugin;
-    private final Player player;
-    private final TamingManager taming;
-    private final BreedingManager breeding;
-    private final PetManager pets;
-    private UIElement infoContainer; // Separate container for info label
-    private UIElement buttonContainer; // Separate container for button label
-    private UILabel infoLabel; // Top label for info
-    private UILabel buttonLabel; // Bottom label for Feed and Close buttons
-    private Npc currentTamingNpc;
-
-    public BeastFriendsUI(BeastFriends plugin, Player player) {
+public class BeastFriendsUI extends BeastFriends{
+    
+    
+   public BeastFriendsUI(Plugin plugin) {
         this.plugin = plugin;
-        this.player = player;
-        this.taming = new TamingManager(plugin, this, new DatabaseManager(plugin.getSQLiteConnection(plugin.getPath() + "/pets.db")));
-        this.breeding = new BreedingManager(plugin, this, new DatabaseManager(plugin.getSQLiteConnection(plugin.getPath() + "/pets.db")));
-        this.pets = new PetManager(plugin, new DatabaseManager(plugin.getSQLiteConnection(plugin.getPath() + "/pets.db")));
-        plugin.registerEventListener(this);
+      
     }
 
-    // Getter for taming
-    public TamingManager getTaming() {
-        return taming;
+   
+   
+    public void BeastHUD(PlayerConnectEvent event) throws SQLException {   
+        Player player = event.getPlayer();
+        
+        UIElement petsHUD = new UIElement();
+        player.addUIElement(petsHUD);
+        petsHUD.setSize(500, 40, false); 
+        petsHUD.setPosition(65, 5, true); 
+        petsHUD.setBorderEdgeRadius(5.0f, false);
+        petsHUD.setBorder(1);
+        petsHUD.setBorderColor(888);
+        petsHUD.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.7f); // Semi-transparent
+        petsHUD.setVisible(true);
+
+        UILabel InfoLabel = new UILabel();
+        InfoLabel.setText("BeastFriends");
+        InfoLabel.setFont(Font.Medieval);
+        InfoLabel.style.textAlign.set(TextAnchor.MiddleCenter);
+        InfoLabel.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        InfoLabel.setFontSize(12);
+        InfoLabel.setSize(500, 40, false);
+        InfoLabel.setPosition(0, 0, false);
+        petsHUD.addChild(InfoLabel);
+        player.setAttribute("InfoLabel", InfoLabel);
+        
     }
 
-    // Getter for currentTamingNpc
-    public Npc getCurrentTamingNpc() {
-        return currentTamingNpc;
+  
+    public void BeastFeedMenu(PlayerConnectEvent event) throws SQLException {   
+        Player player = event.getPlayer();
+        
+        UIElement FeedMenu = new UIElement();
+        player.addUIElement(FeedMenu);
+        FeedMenu.setSize(270, 100, false); 
+        FeedMenu.setPosition(45, 45, true); 
+        FeedMenu.setBorderEdgeRadius(5.0f, false);
+        FeedMenu.setBorder(1);
+        FeedMenu.setBorderColor(988);
+        FeedMenu.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.7f); // Semi-transparent
+        FeedMenu.setVisible(false);
+        player.setAttribute("FeedMenu", FeedMenu);
+        
+        
+        UILabel FeedButton = new UILabel();
+        FeedButton.setText("Feed");
+        FeedButton.setFont(Font.Medieval);
+        FeedButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        FeedButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        FeedButton.setFontSize(12);
+        FeedButton.setSize(250, 40, false);
+        FeedButton.setPosition(10, 5, false);
+        FeedButton.setBorder(3);
+        FeedButton.setBackgroundColor(988);
+        FeedButton.setClickable(true);
+        FeedMenu.addChild(FeedButton);
+        player.setAttribute("FeedButton", FeedButton);
+        
+        UILabel CancelFeedButton = new UILabel();
+        CancelFeedButton.setText("Cancel");
+        CancelFeedButton.setFont(Font.Medieval);
+        CancelFeedButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        CancelFeedButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        CancelFeedButton.setFontSize(12);
+        CancelFeedButton.setSize(250, 40, false);
+        CancelFeedButton.setPosition(10, 50, false);
+        CancelFeedButton.setBorder(3);
+        CancelFeedButton.setBackgroundColor(988);
+        CancelFeedButton.setClickable(true);
+        FeedMenu.addChild(CancelFeedButton);
+        player.setAttribute("CancelFeedButton", CancelFeedButton);
+        
+        
+        
     }
-
-    public void showTameUI(Npc npc) {
-        // If taming another NPC and this is a different NPC, show message
-        if (currentTamingNpc != null && currentTamingNpc.getGlobalID() != npc.getGlobalID()) {
-            if (infoLabel != null) {
-                infoLabel.setText("This is not the same NPC!");
-            }
-            return;
-        }
-
-        // Create info container if it doesn't exist
-        if (infoContainer == null) {
-            infoContainer = new UIElement();
-            player.addUIElement(infoContainer);
-            infoContainer.setSize(300, 80, false);
-            infoContainer.setPosition(50, 10, true);
-            infoContainer.setBorder(2);
-            infoContainer.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.9f);
-
-            infoLabel = new UILabel();
-            infoLabel.setText("Click 'Feed' to tame " + npc.getDefinition().name + "!");
-            infoLabel.setFont(Font.Medieval);
-            infoLabel.style.textAlign.set(TextAnchor.MiddleCenter);
-            infoLabel.setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-            infoLabel.setFontSize(16);
-            infoLabel.setSize(280, 60, false);
-            infoLabel.setPosition(10, 10, false);
-            infoContainer.addChild(infoLabel);
-        }
-
-        // Create button container if it doesn't exist
-        if (buttonContainer == null) {
-            buttonContainer = new UIElement();
-            player.addUIElement(buttonContainer);
-            buttonContainer.setSize(300, 40, false);
-            buttonContainer.setPosition(50, 20, true);
-            buttonContainer.setBorder(2);
-            buttonContainer.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.9f);
-
-            buttonLabel = new UILabel();
-            buttonLabel.setText("<b>Feed</b>          <b>Close</b>");
-            buttonLabel.setFont(Font.Medieval);
-            buttonLabel.style.textAlign.set(TextAnchor.MiddleCenter);
-            buttonLabel.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-            buttonLabel.setFontSize(16);
-            buttonLabel.setSize(280, 20, false);
-            buttonLabel.setPosition(10, 10, false);
-            buttonLabel.setClickable(true);
-            buttonContainer.addChild(buttonLabel);
-        }
-
-        infoContainer.setVisible(true);
-        buttonContainer.setVisible(true);
-        player.setMouseCursorVisible(true);
-        this.currentTamingNpc = npc;
+    
+    
+    public void BeastControlMenu(PlayerConnectEvent event) throws SQLException {   
+        Player player = event.getPlayer();
+        
+        UIElement ControlMenu = new UIElement();
+        player.addUIElement(ControlMenu);
+        ControlMenu.setSize(270, 300, false); 
+        ControlMenu.setPosition(45, 45, true); 
+        ControlMenu.setBorderEdgeRadius(5.0f, false);
+        ControlMenu.setBorder(1);
+        ControlMenu.setBorderColor(988);
+        ControlMenu.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.7f); // Semi-transparent
+        ControlMenu.setVisible(false);
+        player.setAttribute("ControlMenu", ControlMenu);
+        
+        UILabel ControlCallButton = new UILabel();
+        ControlCallButton.setText("Call");
+        ControlCallButton.setFont(Font.Medieval);
+        ControlCallButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        ControlCallButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        ControlCallButton.setFontSize(12);
+        ControlCallButton.setSize(250, 40, false);
+        ControlCallButton.setPosition(10, 5, false);
+        ControlCallButton.setBorder(3);
+        ControlCallButton.setBackgroundColor(988);
+        ControlCallButton.setClickable(true);
+        ControlMenu.addChild(ControlCallButton);
+        player.setAttribute("ControlCallButton", ControlCallButton);
+        
+        UILabel ControlAttackButton = new UILabel();
+        ControlAttackButton.setText("Attack/guard");
+        ControlAttackButton.setFont(Font.Medieval);
+        ControlAttackButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        ControlAttackButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        ControlAttackButton.setFontSize(12);
+        ControlAttackButton.setSize(250, 40, false);
+        ControlAttackButton.setPosition(10, 50, false);
+        ControlAttackButton.setBorder(3);
+        ControlAttackButton.setBackgroundColor(988);
+        ControlAttackButton.setClickable(true);
+        ControlMenu.addChild(ControlAttackButton);
+        player.setAttribute("ControlAttackButton", ControlAttackButton);
+        
+      //  ControlGuardButton
+        
+        UILabel ControlGuardButton = new UILabel();
+        ControlGuardButton.setText("Stand/guard");
+        ControlGuardButton.setFont(Font.Medieval);
+        ControlGuardButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        ControlGuardButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        ControlGuardButton.setFontSize(12);
+        ControlGuardButton.setSize(250, 40, false);
+        ControlGuardButton.setPosition(10, 95, false);
+        ControlGuardButton.setBorder(3);
+        ControlGuardButton.setBackgroundColor(988);
+        ControlGuardButton.setClickable(true);
+        ControlMenu.addChild(ControlGuardButton);
+        player.setAttribute("ControlGuardButton", ControlGuardButton);
+        
+        
+        UILabel ControlbreedButton = new UILabel();
+        ControlbreedButton.setText("breed");
+        ControlbreedButton.setFont(Font.Medieval);
+        ControlbreedButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        ControlbreedButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        ControlbreedButton.setFontSize(12);
+        ControlbreedButton.setSize(250, 40, false);
+        ControlbreedButton.setPosition(10, 140, false);
+        ControlbreedButton.setBorder(3);
+        ControlbreedButton.setBackgroundColor(988);
+        ControlbreedButton.setClickable(true);
+        ControlMenu.addChild(ControlbreedButton);
+        player.setAttribute("ControlbreedButton", ControlbreedButton);
+        
+        
+        
+         UILabel ControlReNameButton = new UILabel();
+        ControlReNameButton.setText("ReName");
+        ControlReNameButton.setFont(Font.Medieval);
+        ControlReNameButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        ControlReNameButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        ControlReNameButton.setFontSize(12);
+        ControlReNameButton.setSize(250, 40, false);
+        ControlReNameButton.setPosition(10, 185, false);
+        ControlReNameButton.setBorder(3);
+        ControlReNameButton.setBackgroundColor(988);
+        ControlReNameButton.setClickable(true);
+        ControlMenu.addChild(ControlReNameButton);
+        player.setAttribute("ControlReNameButton", ControlReNameButton);
+        
+        
+        UILabel CancelControlButton = new UILabel();
+        CancelControlButton.setText("Cancel");
+        CancelControlButton.setFont(Font.Medieval);
+        CancelControlButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        CancelControlButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        CancelControlButton.setFontSize(12);
+        CancelControlButton.setSize(250, 40, false);
+        CancelControlButton.setPosition(10, 230, false);
+        CancelControlButton.setBorder(3);
+        CancelControlButton.setBackgroundColor(988);
+        CancelControlButton.setClickable(true);
+        ControlMenu.addChild(CancelControlButton);
+        player.setAttribute("CancelControlButton", CancelControlButton);
+        
+        
+        
+        
+        
+        
+        
+        // rename popup
+        UIElement ControlReNameMenu = new UIElement();
+        player.addUIElement(ControlReNameMenu);
+        ControlReNameMenu.setSize(270, 140, false); 
+        ControlReNameMenu.setPosition(45, 45, true); 
+        ControlReNameMenu.setBorderEdgeRadius(5.0f, false);
+        ControlReNameMenu.setBorder(1);
+        ControlReNameMenu.setBorderColor(988);
+        ControlReNameMenu.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.7f); // Semi-transparent
+        ControlReNameMenu.setVisible(false);
+        player.setAttribute("ControlReNameMenu", ControlReNameMenu);
+        
+        
+          //ControlReNameTextField
+          UITextField ControlReNameTextField = new UITextField();
+          ControlReNameTextField.setClickable(true);
+          ControlReNameTextField.setMaxCharacters(36);
+          ControlReNameTextField.setText("");
+          ControlReNameTextField.setBorderColor(143);
+          ControlReNameTextField.setSize(250, 30, false);
+          ControlReNameTextField.setPosition(10, 5, false); 
+          ControlReNameMenu.addChild((UIElement)ControlReNameTextField);
+          ControlReNameTextField.getCurrentText(player, (String ControlReNameText) -> {
+          player.setAttribute("ExitPortalNameText", ControlReNameText); 
+          });      
+          player.setAttribute("ControlReNameTextField", ControlReNameTextField);
+          
+        //  player.addUIElement((UIElement)ExitPortalNameTextField);
+       
+        UILabel ReNameButton = new UILabel();
+        ReNameButton.setText("Set Name");
+        ReNameButton.setFont(Font.Medieval);
+        ReNameButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        ReNameButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        ReNameButton.setFontSize(12);
+        ReNameButton.setSize(250, 40, false);
+        ReNameButton.setPosition(10, 40, false);
+        ReNameButton.setBorder(3);
+        ReNameButton.setBackgroundColor(988);
+        ReNameButton.setClickable(true);
+        ControlReNameMenu.addChild(ReNameButton);
+        player.setAttribute("ReNameButton", ReNameButton);
+        
+        UILabel CancelReNameButton = new UILabel();
+        CancelReNameButton.setText("Cancel");
+        CancelReNameButton.setFont(Font.Medieval);
+        CancelReNameButton.style.textAlign.set(TextAnchor.MiddleCenter);
+        CancelReNameButton.setFontColor(9.0f, 9.0f, 9.0f, 1.0f);
+        CancelReNameButton.setFontSize(12);
+        CancelReNameButton.setSize(250, 40, false);
+        CancelReNameButton.setPosition(10, 85, false);
+        CancelReNameButton.setBorder(3);
+        CancelReNameButton.setBackgroundColor(988);
+        CancelReNameButton.setClickable(true);
+        ControlReNameMenu.addChild(CancelReNameButton);
+        player.setAttribute("CancelReNameButton", CancelReNameButton);
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+     
+    
+} 
 
-    // Update the top info label text
-    public void updateInfoLabel(String text) {
-        if (infoLabel != null) {
-            infoLabel.setText(text);
-        }
-    }
-
-    // Close the entire taming UI
-    public void closeTameUI() {
-        if (infoContainer != null) {
-            infoContainer.setVisible(false);
-            infoContainer = null;
-            infoLabel = null;
-        }
-        if (buttonContainer != null) {
-            buttonContainer.setVisible(false);
-            buttonContainer = null;
-            buttonLabel = null;
-        }
-        player.setMouseCursorVisible(false);
-        currentTamingNpc = null; // Reset taming NPC
-    }
-
-    // Hide the button container and mouse, keep info container visible
-    public void hideButtonUI() {
-        if (buttonContainer != null) {
-            buttonContainer.setVisible(false);
-            player.setMouseCursorVisible(false);
-        }
-    }
-
-    public void showMyPetsMenu(Player player) {
-        // Existing method unchanged
-        UIElement myPetsMenu = new UIElement();
-        player.addUIElement(myPetsMenu);
-        myPetsMenu.setSize(300, 200, false);
-        myPetsMenu.setPosition(50, 50, true);
-        myPetsMenu.setBorder(2);
-        myPetsMenu.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.9f);
-
-        UILabel titleLabel = new UILabel();
-        titleLabel.setText("My Pets");
-        titleLabel.setFont(Font.Medieval);
-        titleLabel.style.textAlign.set(TextAnchor.MiddleCenter);
-        titleLabel.setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-        titleLabel.setFontSize(16);
-        titleLabel.setSize(280, 40, false);
-        titleLabel.setPosition(10, 10, false);
-        myPetsMenu.addChild(titleLabel);
-
-        UILabel petsLabel = new UILabel();
-        petsLabel.setText("No pets yet...");
-        petsLabel.setFont(Font.Medieval);
-        petsLabel.style.textAlign.set(TextAnchor.MiddleCenter);
-        petsLabel.setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-        petsLabel.setFontSize(16);
-        petsLabel.setSize(280, 100, false);
-        petsLabel.setPosition(10, 60, false);
-        myPetsMenu.addChild(petsLabel);
-
-        UILabel closeButton = new UILabel();
-        closeButton.setText("<b>Close</b>");
-        closeButton.setFont(Font.Medieval);
-        closeButton.style.textAlign.set(TextAnchor.MiddleCenter);
-        closeButton.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-        closeButton.setFontSize(16);
-        closeButton.setSize(100, 40, false);
-        closeButton.setPosition(100, 170, false);
-        closeButton.setClickable(true);
-        closeButton.setBorder(2);
-        closeButton.setBackgroundColor(0.2f, 0.2f, 0.2f, 0.9f);
-        myPetsMenu.addChild(closeButton);
-
-        myPetsMenu.setVisible(true);
-        player.setMouseCursorVisible(true);
-    }
-
-    public void showPetManagementMenu(Npc npc) {
-        // Existing method unchanged
-        UIElement petManagementMenu = new UIElement();
-        player.addUIElement(petManagementMenu);
-        petManagementMenu.setSize(300, 250, false);
-        petManagementMenu.setPosition(50, 50, true);
-        petManagementMenu.setBorder(2);
-        petManagementMenu.setBackgroundColor(0.1f, 0.1f, 0.1f, 0.9f);
-
-        UILabel titleLabel = new UILabel();
-        titleLabel.setText("Manage " + npc.getName());
-        titleLabel.setFont(Font.Medieval);
-        titleLabel.style.textAlign.set(TextAnchor.MiddleCenter);
-        titleLabel.setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-        titleLabel.setFontSize(16);
-        titleLabel.setSize(280, 40, false);
-        titleLabel.setPosition(10, 10, false);
-        petManagementMenu.addChild(titleLabel);
-
-        UILabel followButton = new UILabel();
-        followButton.setText("<b>Follow Me</b>");
-        followButton.setFont(Font.Medieval);
-        followButton.style.textAlign.set(TextAnchor.MiddleCenter);
-        followButton.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-        followButton.setFontSize(16);
-        followButton.setSize(130, 40, false);
-        followButton.setPosition(10, 60, false);
-        followButton.setClickable(true);
-        followButton.setBorder(2);
-        followButton.setBackgroundColor(0.2f, 0.2f, 0.2f, 0.9f);
-        petManagementMenu.addChild(followButton);
-
-        UILabel standStillButton = new UILabel();
-        standStillButton.setText("<b>Stand Still</b>");
-        standStillButton.setFont(Font.Medieval);
-        standStillButton.style.textAlign.set(TextAnchor.MiddleCenter);
-        standStillButton.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-        standStillButton.setFontSize(16);
-        standStillButton.setSize(130, 40, false);
-        standStillButton.setPosition(160, 60, false);
-        standStillButton.setClickable(true);
-        standStillButton.setBorder(2);
-        standStillButton.setBackgroundColor(0.2f, 0.2f, 0.2f, 0.9f);
-        petManagementMenu.addChild(standStillButton);
-
-        UILabel roamButton = new UILabel();
-        roamButton.setText("<b>Roam</b>");
-        roamButton.setFont(Font.Medieval);
-        roamButton.style.textAlign.set(TextAnchor.MiddleCenter);
-        roamButton.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-        roamButton.setFontSize(16);
-        roamButton.setSize(130, 40, false);
-        roamButton.setPosition(10, 110, false);
-        roamButton.setClickable(true);
-        roamButton.setBorder(2);
-        roamButton.setBackgroundColor(0.2f, 0.2f, 0.2f, 0.9f);
-        petManagementMenu.addChild(roamButton);
-
-        UILabel breedButton = new UILabel();
-        breedButton.setText("<b>Breed</b>");
-        breedButton.setFont(Font.Medieval);
-        breedButton.style.textAlign.set(TextAnchor.MiddleCenter);
-        breedButton.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-        breedButton.setFontSize(16);
-        breedButton.setSize(130, 40, false);
-        breedButton.setPosition(160, 110, false);
-        breedButton.setClickable(true);
-        breedButton.setBorder(2);
-        breedButton.setBackgroundColor(0.2f, 0.2f, 0.2f, 0.9f);
-        petManagementMenu.addChild(breedButton);
-
-        UILabel closeButton = new UILabel();
-        closeButton.setText("<b>Close</b>");
-        closeButton.setFont(Font.Medieval);
-        closeButton.style.textAlign.set(TextAnchor.MiddleCenter);
-        closeButton.setFontColor(0.0f, 0.8f, 0.0f, 1.0f);
-        closeButton.setFontSize(16);
-        closeButton.setSize(100, 40, false);
-        closeButton.setPosition(100, 160, false);
-        closeButton.setClickable(true);
-        closeButton.setBorder(2);
-        closeButton.setBackgroundColor(0.2f, 0.2f, 0.2f, 0.9f);
-        petManagementMenu.addChild(closeButton);
-
-        this.currentTamingNpc = npc;
-        petManagementMenu.setVisible(true);
-        player.setMouseCursorVisible(true);
-    }
-
-    public void closeAllMenus() {
-        if (infoContainer != null) {
-            infoContainer.setVisible(false);
-            infoContainer = null;
-            infoLabel = null;
-        }
-        if (buttonContainer != null) {
-            buttonContainer.setVisible(false);
-            buttonContainer = null;
-            buttonLabel = null;
-        }
-        player.setMouseCursorVisible(false);
-        currentTamingNpc = null;
-    }
-
-    @EventMethod
-    public void onPlayerUIElementClickEvent(PlayerUIElementClickEvent event) {
-        if (event.getPlayer() != player) return;
-        UILabel clickedLabel = (UILabel) event.getUIElement();
-
-        if (clickedLabel == buttonLabel) {
-            String text = clickedLabel.getText().toLowerCase();
-            if (text.contains("feed") && currentTamingNpc != null) {
-                taming.attemptTame(player, currentTamingNpc);
-                hideButtonUI(); // Hide button container and mouse on feed click
-            } else if (text.contains("close")) {
-                closeTameUI();
-            }
-        }
-    }
-}

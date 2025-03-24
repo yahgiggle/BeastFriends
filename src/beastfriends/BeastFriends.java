@@ -1,107 +1,238 @@
 package beastfriends;
 
-import net.risingworld.api.Plugin;
-import net.risingworld.api.events.Listener;
-import net.risingworld.api.events.EventMethod;
-import net.risingworld.api.events.player.PlayerMouseButtonEvent;
-import net.risingworld.api.events.player.PlayerSpawnEvent;
-import net.risingworld.api.objects.Player;
-import net.risingworld.api.objects.Npc;
-import net.risingworld.api.definitions.Npcs;
-import net.risingworld.api.database.Database;
-import net.risingworld.api.utils.MouseButton;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.risingworld.api.Plugin;
+import net.risingworld.api.Server;
+import net.risingworld.api.Timer;
+import net.risingworld.api.World;
+import net.risingworld.api.database.Database;
+import net.risingworld.api.definitions.Npcs;
+import net.risingworld.api.events.EventMethod;
+import net.risingworld.api.events.Listener;
 import net.risingworld.api.events.player.PlayerConnectEvent;
-import java.util.HashMap;
+import net.risingworld.api.events.player.PlayerDisconnectEvent;
+import net.risingworld.api.events.player.PlayerMouseButtonEvent;
+import net.risingworld.api.events.player.ui.PlayerUIElementClickEvent;
+import net.risingworld.api.objects.Npc;
+import net.risingworld.api.objects.Player;
+import net.risingworld.api.objects.Time;
+import net.risingworld.api.ui.UIElement;
+import net.risingworld.api.ui.UILabel;
+import net.risingworld.api.utils.MouseButton;
+import net.risingworld.api.utils.Vector3f;
+
+
+
+
+
 
 public class BeastFriends extends Plugin implements Listener {
 
-    private static final Logger LOGGER = Logger.getLogger(BeastFriends.class.getName());
-    private Database petDatabase;
-    private DatabaseManager dbManager;
-    private HashMap<Player, BeastFriendsUI> playerUIs = new HashMap<>(); // Store UI instances per player
-
+    protected static Database beastfriendsDataBaseAccess1;
+    protected static Database beastfriendsDataBaseAccess2;
+    protected static Database beastfriendsDataBaseAccess3;
+    private static String WorldName;
+    protected static Plugin plugin;
+   
+     
+    
     @Override
     public void onEnable() {
-        System.out.println("[BeastFriends] Entering onEnable...");
+        System.out.println("BeastFriends plugin starting...");
         try {
-            petDatabase = getSQLiteConnection(getPath() + "/pets.db");
-            if (petDatabase == null) {
-                LOGGER.severe("Failed to initialize database connection!");
-                return;
-            }
-            dbManager = new DatabaseManager(petDatabase);
-            System.out.println("[BeastFriends] Database connection established.");
-            dbManager.initializeDatabase();
-            System.out.println("[BeastFriends] Initializing event listeners...");
+            // Initialize database structure
+            new DatabaseManager(this).createDatabaseStructure();
+            
             registerEventListener(this);
-            System.out.println("[BeastFriends] Event listeners registered.");
+            this.plugin = this;
+            System.out.println("BeastFriends plugin successfully enabled.");
         } catch (Exception e) {
-            LOGGER.severe("Failed to enable BeastFriends plugin: " + e.getMessage());
+            System.out.println("Failed to enable BeastFriends plugin: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        // Set All breeding false
+        Npc[] npcs = World.getAllNpcs();
+        for (Npc npc : npcs) {
+ 	npc.setAttribute("Breed", false);
+        }
+        
+        
+            // clean out database  
+            try(ResultSet Result = beastfriendsDataBaseAccess1.executeQuery("SELECT * FROM `beastfriends`")){
+            while(Result.next()) {
+            long SavedNPCs =  Result.getLong("GlobalID");
+            Npc KillNpc = World.getNpc(SavedNPCs);
+            if(KillNpc != null){
+            System.out.println("NPC Found");
+            }else{System.out.println("NPC Not Found");
+            beastfriendsDataBaseAccess2.executeUpdate("DELETE FROM beastfriends WHERE GlobalID = '"+SavedNPCs+"'");
+            }
+            }
+            }catch (SQLException ex) {Logger.getLogger(BeastFriends.class.getName()).log(Level.SEVERE, null, ex);}
+        
+        
+            
+            
+            
+            //set guards
+            try(ResultSet Result = beastfriendsDataBaseAccess1.executeQuery("SELECT * FROM `beastfriends`")){
+            while(Result.next()) {
+                
+            long SavedNPCs =  Result.getLong("GlobalID");
+            Npc GuardNpc = World.getNpc(SavedNPCs);
+            if(GuardNpc != null){
+            
+            if (Boolean.TRUE.equals(Result.getBoolean("Guard"))) {
+            String NPCOwner = Result.getString("OwnerUID");  
+            String NpcName = Result.getString("NpcName"); 
+            System.out.println("Gaurd Set");
+            GuardNpc.setName("Guard "+NpcName);
+            Vector3f MakeVector3f = new Vector3f(Result.getFloat("posx"),Result.getFloat("posy"),Result.getFloat("posz"));   
+            GuardNpc.setAttribute("GuardSpot",MakeVector3f);    
+             
+            Timer guardTimer = new Timer(1.0f, 0.0f, -1, () -> {
+            for(Player OnLineplayers : Server.getAllPlayers()){
+            if(OnLineplayers != null){ 
+            Npc[] GetNPCs = World.getAllNpcsInRange(OnLineplayers.getPosition(), 25);
+            for (Npc GotNPCs : GetNPCs) {
+            if(GotNPCs.getGlobalID() == GuardNpc.getGlobalID()){   
+            // within range   
+            GuardNpc.setAttribute("GuardAttack", true);
+            
+                        if(OnLineplayers.getUID().matches(NPCOwner)){
+                        GuardNpc.setAlerted(false);
+                        GuardNpc.setBehaviour(Npcs.Behaviour.Default);
+                        GuardNpc.setAttackReaction(Npcs.AttackReaction.Ignore);
+                        GuardNpc.moveTo((Vector3f)GuardNpc.getAttribute("GuardSpot"));    
+                    }else if(!OnLineplayers.getUID().matches(NPCOwner)){
+                        GuardNpc.setAlerted(true);
+                        GuardNpc.setBehaviour(Npcs.Behaviour.Aggressive);
+                        GuardNpc.setAttackReaction(Npcs.AttackReaction.Attack);
+                        GuardNpc.moveTo(OnLineplayers.getPosition());
+                    }
+              
+            }}   
+            }}   
+            });
+            guardTimer.start();   
+            GuardNpc.setAttribute("GuardTimer", guardTimer);
+            }
+            }
+            }
+            }catch (SQLException ex) {Logger.getLogger(BeastFriends.class.getName()).log(Level.SEVERE, null, ex);}
+        
+        
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+         
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+       
+        
+        
+        
+        
+        
+    }
+    
+    
+    
+    
+           @EventMethod
+  public void onPlayerConnect(PlayerConnectEvent event) throws SQLException  {
+  Player player = event.getPlayer();
+    
+    int Clicked = 0;
+    player.setAttribute("Clicked", Clicked);
+    long NpcGlobalID = 0;      
+    player.setAttribute("NpcGlobalID", NpcGlobalID);
+    int FeedCount = 0;
+    player.setAttribute("FeedCount", FeedCount);
+    int MenuCount = 0;
+    player.setAttribute("MenuCount", MenuCount);
+    player.setAttribute("SetNpctoBreed", false);
+    
+    
+     new BeastFriendsUI(this).BeastHUD(event);
+     new BeastFriendsUI(this).BeastFeedMenu(event);
+     new BeastFriendsUI(this).BeastControlMenu(event);
+     
+     
+    
+  }
+    
+  
+    
+    @EventMethod
+    public void onPlayerMouseButtonEvent(PlayerMouseButtonEvent event ) throws SQLException {
+    Player player = event.getPlayer();
+    
+    if (event.isPressed() && event.getButton() == MouseButton.Right) {
+      new TamingManager(this).TamingNPC(player);
+    }
+                    
+    }
+    
+    
+    
+      @EventMethod
+    public void onPlayerUIEClick(PlayerUIElementClickEvent event) throws SQLException {
+    
+    
+    new TamingManager(this).TamingOnUiClickEvent(event);
+    new PetManager(this).ControllingNPCOnClickEvent(event);
+    
     }
 
+    
+               @EventMethod
+  public void onPlayerDisconnectEvent(PlayerDisconnectEvent event) throws SQLException  {
+  Player player = event.getPlayer();
+  
+  }
+    
+    
+    
+    
+    
     @Override
     public void onDisable() {
-        System.out.println("-- BeastFriends PLUGIN DISABLED --");
-        if (dbManager != null) {
-            dbManager.closeDatabase();
-        }
-        for (BeastFriendsUI ui : playerUIs.values()) {
-            ui.closeAllMenus();
-        }
-        playerUIs.clear();
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
-    @EventMethod
-    public void onPlayerConnect(PlayerConnectEvent event) {
-        Player player = event.getPlayer();
-        // No need to set thisfeedcount here; handled in TamingManager
-    }
-
-    @EventMethod
-    public void onPlayerSpawn(PlayerSpawnEvent event) {
-        Player player = event.getPlayer();
-        player.setListenForMouseInput(true);
-        System.out.println("[BeastFriends] Enabled mouse input for player: " + player.getName());
-    }
-
-    @EventMethod
-    public void onPlayerMouseButtonEvent(PlayerMouseButtonEvent event) {
-        Player player = event.getPlayer();
-        if (event.isPressed() && event.getButton() == MouseButton.Right) {
-            player.getNpcInLineOfSight(100, (npc) -> {
-                if (npc != null && npc.getDefinition().type == Npcs.Type.Animal) {
-                    BeastFriendsUI ui = playerUIs.get(player);
-                    if (ui == null) {
-                        ui = new BeastFriendsUI(this, player);
-                        playerUIs.put(player, ui);
-                    }
-                    TamingManager taming = ui.getTaming();
-                    if (dbManager.isOwner(player, npc)) {
-                        ui.showPetManagementMenu(npc);
-                    } else {
-                        ui.showTameUI(npc); // Will check NPC match internally
-                        taming.attemptTame(player, npc); // Start or continue taming if same NPC
-                    }
-                }
-            });
-        }
-    }
-
-    public void makePetFollow(Player player, Npc npc) {
-        PetManager pets = new PetManager(this, dbManager);
-        pets.makePetFollow(player, npc);
-    }
-
-    public void makePetStandStill(Player player, Npc npc) {
-        PetManager pets = new PetManager(this, dbManager);
-        pets.makePetStandStill(player, npc);
-    }
-
-    public void makePetRoam(Player player, Npc npc) {
-        PetManager pets = new PetManager(this, dbManager);
-        pets.makePetRoam(player, npc);
-    }
+  
 }
+
